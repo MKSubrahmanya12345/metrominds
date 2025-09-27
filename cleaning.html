@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kochi Metro - Cleaning Slot Simulator</title>
+    <style>
+        /* --- Windows 7 Style --- */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #F0F0F0;
+            color: #000;
+            margin: 0;
+            padding: 10px;
+            font-size: 14px;
+        }
+
+        .container {
+            display: flex;
+            gap: 10px;
+            height: calc(100vh - 20px);
+        }
+
+        .panel {
+            background-color: #E1E1E1;
+            border: 1px solid #A0A0A0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background-color: #cce3f5;
+            border-bottom: 1px solid #A0A0A0;
+            font-weight: bold;
+            padding: 8px 10px;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .panel-body {
+            padding: 15px;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        /* --- Panel Layout --- */
+        #inputs-panel { flex-basis: 35%; }
+        #results-panel { flex-basis: 40%; }
+        #analysis-panel { flex-basis: 25%; }
+
+        /* --- UI Elements --- */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        th, td {
+            border: 1px solid #b0b0b0;
+            padding: 6px 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #d8d8d8;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        input[type="number"], input[type="time"], select {
+            width: 70px;
+            padding: 4px;
+            border: 1px solid #999;
+            border-radius: 2px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .train-row input {
+            width: 60px;
+        }
+        
+        .train-row td {
+            vertical-align: middle;
+        }
+
+        button {
+            padding: 5px 15px;
+            border: 1px solid #999;
+            background-color: #f0f0f0;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #e0e0e0;
+        }
+        
+        .analysis-summary p {
+            margin: 0 0 10px 0;
+            line-height: 1.6;
+        }
+
+        .analysis-summary strong {
+            display: inline-block;
+            width: 180px;
+        }
+        
+        .status-cleaned { color: green; font-weight: bold; }
+        .status-missed { color: red; font-weight: bold; }
+        .status-pending { color: orange; font-weight: bold; }
+        
+        .bay-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- ======================= INPUTS PANEL ======================= -->
+    <div id="inputs-panel" class="panel">
+        <div class="panel-header">Inputs & Configuration</div>
+        <div class="panel-body">
+            <div class="input-group">
+                <label>Operational Parameters</label>
+                <div>
+                    Cleaners per Shift: <input type="number" id="num-cleaners" value="8" min="1">
+                </div>
+                <div>
+                    Number of Bays: <input type="number" id="num-bays" value="2" min="1">
+                </div>
+                 <div>
+                    Cleaners per Team: <input type="number" id="cleaners-per-team" value="4" min="1">
+                </div>
+                <div>
+                    Cleaning Time (hrs): <input type="number" id="cleaning-time" value="0.5" step="0.1" min="0.1">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>Bay Maintenance Status</label>
+                <div id="bay-toggles-container"></div>
+            </div>
+            
+            <div class="input-group">
+                <label>Train Roster</label>
+                <table id="train-table">
+                    <thead>
+                        <tr>
+                            <th>Train ID</th>
+                            <th>Arrival</th>
+                            <th>Departure</th>
+                            <th>Priority</th>
+                        </tr>
+                    </thead>
+                    <tbody id="train-table-body">
+                        <!-- Train rows will be dynamically inserted here -->
+                    </tbody>
+                </table>
+                <br>
+                <button id="add-train-btn">Add Train</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================= RESULTS PANEL ======================= -->
+    <div id="results-panel" class="panel">
+        <div class="panel-header">Allocation Schedule</div>
+        <div class="panel-body">
+            <table id="results-table">
+                <thead>
+                    <tr>
+                        <th>Train ID</th>
+                        <th>Bay</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="results-table-body">
+                    <!-- Results will be dynamically inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ======================= ANALYSIS PANEL ======================= -->
+    <div id="analysis-panel" class="panel">
+        <div class="panel-header">Analysis & "What-If"</div>
+        <div class="panel-body">
+            <div class="input-group">
+                <label>"What-If" Scenarios</label>
+                <p>Simulate changes to see the impact instantly.</p>
+                <div>Add Cleaners: <input type="number" id="what-if-cleaners" value="0" min="0"></div>
+                <div>Add Bays: <input type="number" id="what-if-bays" value="0" min="0"></div>
+            </div>
+            <hr>
+            <div class="input-group analysis-summary">
+                <label>Performance Summary</label>
+                <p id="summary-total-cleaned"><strong>Total Cleaned:</strong> <span></span></p>
+                <p id="summary-total-missed"><strong>Total Missed:</strong> <span></span></p>
+                <p id="summary-bay-utilization"><strong>Bay Utilization:</strong> <span></span></p>
+                <p id="summary-manpower-utilization"><strong>Manpower Utilization:</strong> <span></span></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ===================================================================================
+//
+//                        KOCHI METRO CLEANING SIMULATOR LOGIC
+//
+// ===================================================================================
+
+document.addEventListener('DOMContentLoaded', function() {
+
+    // --- SECTION 1: INITIAL STATE & DEMO DATA ---
+
+    let trains = [
+        { id: 'Train1', arrival: '23:00', departure: '05:00', priority: 3 },
+        { id: 'Train2', arrival: '23:30', departure: '05:30', priority: 2 },
+        { id: 'Train3', arrival: '00:00', departure: '06:00', priority: 1 }
+    ];
+
+    // --- SECTION 2: UTILITY FUNCTIONS ---
+
+    /**
+     * Converts "HH:MM" time string to minutes from midnight.
+     * Handles overnight times by adding 24 hours worth of minutes if needed.
+     * @param {string} timeStr - e.g., "23:00" or "05:00"
+     * @param {string} baseTimeStr - The arrival time, to check if departure is on the next day.
+     * @returns {number} - Total minutes from midnight.
+     */
+    const timeToMinutes = (timeStr, baseTimeStr = null) => {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        let totalMinutes = hours * 60 + minutes;
+        
+        // If it's a departure time and it's earlier than the arrival, it's the next day.
+        if (baseTimeStr) {
+            const [baseHours, ] = baseTimeStr.split(':').map(Number);
+            if (hours < baseHours) {
+                totalMinutes += 24 * 60;
+            }
+        }
+        return totalMinutes;
+    };
+
+    /**
+     * Converts minutes from midnight back to "HH:MM" format.
+     * Handles times that are past midnight.
+     * @param {number} totalMinutes
+     * @returns {string} - "HH:MM"
+     */
+    const minutesToTime = (totalMinutes) => {
+        const hours = Math.floor(totalMinutes / 60) % 24;
+        const minutes = totalMinutes % 60;
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    };
+
+
+    // --- SECTION 3: CORE ALLOCATION ALGORITHM ---
+
+    /**
+     * The main function to run the entire cleaning slot allocation simulation.
+     */
+    const runAllocation = () => {
+        // Step 1: Gather all inputs from the UI
+        const numCleanersBase = parseInt(document.getElementById('num-cleaners').value) || 0;
+        const numBaysBase = parseInt(document.getElementById('num-bays').value) || 0;
+        const cleanersPerTeam = parseInt(document.getElementById('cleaners-per-team').value) || 1;
+        const cleaningTimeHours = parseFloat(document.getElementById('cleaning-time').value) || 0.5;
+        const cleaningTimeMinutes = cleaningTimeHours * 60;
+
+        // "What-If" additions
+        const whatIfCleaners = parseInt(document.getElementById('what-if-cleaners').value) || 0;
+        const whatIfBays = parseInt(document.getElementById('what-if-bays').value) || 0;
+        const totalCleaners = numCleanersBase + whatIfCleaners;
+        const totalBays = numBaysBase + whatIfBays;
+
+        const availableTeams = Math.floor(totalCleaners / cleanersPerTeam);
+        
+        // Read bay maintenance status
+        const bayMaintenance = [];
+        for (let i = 0; i < numBaysBase; i++) {
+            bayMaintenance[i] = document.getElementById(`bay-toggle-${i}`).checked;
+        }
+
+        // Step 2: Prepare data structures for simulation
+        // Create a deep copy of trains to avoid modifying the original array on re-runs
+        let simTrains = JSON.parse(JSON.stringify(trains));
+
+        simTrains.forEach(train => {
+            train.arrivalTimeMinutes = timeToMinutes(train.arrival);
+            train.departureTimeMinutes = timeToMinutes(train.departure, train.arrival);
+            train.status = 'Pending';
+            train.assignedBay = null;
+            train.startTime = null;
+            train.endTime = null;
+        });
+
+        // Sort trains: 1. By Priority (lower number is higher priority), 2. By Arrival Time
+        simTrains.sort((a, b) => {
+            if (a.priority !== b.priority) {
+                return a.priority - b.priority;
+            }
+            return a.arrivalTimeMinutes - b.arrivalTimeMinutes;
+        });
+        
+        // Initialize bays and cleaning teams
+        let bays = [];
+        for (let i = 0; i < totalBays; i++) {
+            // A bay is down for maintenance only if it's one of the base bays and toggled
+            const isDown = i < numBaysBase ? bayMaintenance[i] : false;
+            bays.push({ id: i + 1, availableFrom: 0, isDown: isDown, totalOccupiedTime: 0 });
+        }
+        
+        let teams = [];
+        for (let i = 0; i < availableTeams; i++) {
+            teams.push({ id: i + 1, availableFrom: 0 });
+        }
+
+        // Step 3: Run the assignment logic
+        simTrains.forEach(train => {
+            // Find the earliest available bay that is not down for maintenance
+            let availableBays = bays
+                .filter(b => !b.isDown)
+                .sort((a, b) => a.availableFrom - b.availableFrom);
+            
+            // Find the earliest available team
+            let availableTeamsSorted = teams.sort((a, b) => a.availableFrom - b.availableFrom);
+            
+            if (availableBays.length > 0 && availableTeamsSorted.length > 0) {
+                const bestBay = availableBays[0];
+                const bestTeam = availableTeamsSorted[0];
+                
+                // Cleaning can only start after the train has arrived AND the bay is free AND a team is free.
+                const startTime = Math.max(train.arrivalTimeMinutes, bestBay.availableFrom, bestTeam.availableFrom);
+                const endTime = startTime + cleaningTimeMinutes;
+
+                // Check if cleaning can be completed before the train needs to depart
+                if (endTime <= train.departureTimeMinutes) {
+                    train.status = 'Cleaned';
+                    train.assignedBay = bestBay.id;
+                    train.startTime = startTime;
+                    train.endTime = endTime;
+
+                    // Update the availability of the bay and the team for the next train
+                    bestBay.availableFrom = endTime;
+                    bestBay.totalOccupiedTime += cleaningTimeMinutes;
+                    bestTeam.availableFrom = endTime;
+                } else {
+                    train.status = 'Missed (Late Finish)';
+                }
+            } else {
+                train.status = 'Missed (No Slot)';
+            }
+        });
+
+        // Step 4: Update the UI with the results
+        renderResults(simTrains);
+        renderAnalysis(simTrains, bays, totalCleaners, cleaningTimeMinutes, totalBays);
+    };
+
+    // --- SECTION 4: UI RENDERING FUNCTIONS ---
+    
+    /**
+     * Renders the dynamic list of trains in the input panel.
+     */
+    const renderTrainInputs = () => {
+        const tbody = document.getElementById('train-table-body');
+        tbody.innerHTML = '';
+        trains.forEach((train, index) => {
+            const row = document.createElement('tr');
+            row.classList.add('train-row');
+            row.innerHTML = `
+                <td><span contenteditable="true" data-index="${index}" data-field="id">${train.id}</span></td>
+                <td><input type="time" value="${train.arrival}" data-index="${index}" data-field="arrival"></td>
+                <td><input type="time" value="${train.departure}" data-index="${index}" data-field="departure"></td>
+                <td><input type="number" value="${train.priority}" min="1" data-index="${index}" data-field="priority"></td>
+            `;
+            tbody.appendChild(row);
+        });
+    };
+    
+    /**
+     * Renders the maintenance toggle switches for each base bay.
+     */
+    const renderBayToggles = () => {
+        const container = document.getElementById('bay-toggles-container');
+        const numBays = parseInt(document.getElementById('num-bays').value) || 0;
+        container.innerHTML = '';
+        for(let i = 0; i < numBays; i++) {
+            const div = document.createElement('div');
+            div.classList.add('bay-toggle');
+            div.innerHTML = `
+                <label for="bay-toggle-${i}">Bay ${i + 1} Maintenance:</label>
+                <input type="checkbox" id="bay-toggle-${i}">
+            `;
+            container.appendChild(div);
+        }
+        // Add event listeners to new toggles
+        addEventListeners();
+    };
+
+    /**
+     * Renders the final allocation schedule in the results table.
+     * @param {Array} simResults - The processed array of trains with allocation data.
+     */
+    const renderResults = (simResults) => {
+        const tbody = document.getElementById('results-table-body');
+        tbody.innerHTML = '';
+        simResults.forEach(train => {
+            const row = document.createElement('tr');
+            let statusClass = '';
+            if (train.status === 'Cleaned') statusClass = 'status-cleaned';
+            else if (train.status.startsWith('Missed')) statusClass = 'status-missed';
+            else statusClass = 'status-pending';
+
+            row.innerHTML = `
+                <td>${train.id}</td>
+                <td>${train.assignedBay || 'N/A'}</td>
+                <td>${train.startTime ? minutesToTime(train.startTime) : 'N/A'}</td>
+                <td>${train.endTime ? minutesToTime(train.endTime) : 'N/A'}</td>
+                <td class="${statusClass}">${train.status}</td>
+            `;
+            tbody.appendChild(row);
+        });
+    };
+    
+    /**
+     * Calculates and displays the summary statistics in the analysis panel.
+     */
+    const renderAnalysis = (simResults, bays, totalCleaners, cleaningTimeMinutes, totalBays) => {
+        const cleanedCount = simResults.filter(t => t.status === 'Cleaned').length;
+        const missedCount = simResults.length - cleanedCount;
+
+        document.querySelector('#summary-total-cleaned span').textContent = `${cleanedCount} / ${simResults.length}`;
+        document.querySelector('#summary-total-missed span').textContent = `${missedCount} / ${simResults.length}`;
+
+        // Bay Utilization: (Total time bays were used / Total time bays were available) * 100
+        const totalNightMinutes = 10 * 60; // Approximate operational window from 22:00 to 08:00
+        const totalBayAvailableTime = totalBays * totalNightMinutes;
+        const totalBayUsedTime = bays.reduce((acc, bay) => acc + bay.totalOccupiedTime, 0);
+        const bayUtilization = totalBayAvailableTime > 0 ? (totalBayUsedTime / totalBayAvailableTime * 100).toFixed(1) : 0;
+        document.querySelector('#summary-bay-utilization span').textContent = `${bayUtilization}%`;
+        
+        // Manpower Utilization: (Total cleaner-minutes worked / Total cleaner-minutes available) * 100
+        const cleanersPerTeam = parseInt(document.getElementById('cleaners-per-team').value) || 1;
+        const totalManpowerMinutesWorked = cleanedCount * cleaningTimeMinutes * cleanersPerTeam;
+        const totalManpowerMinutesAvailable = totalCleaners * totalNightMinutes; // Assuming an 8-hour shift for all cleaners
+        const manpowerUtilization = totalManpowerMinutesAvailable > 0 ? (totalManpowerMinutesWorked / totalManpowerMinutesAvailable * 100).toFixed(1) : 0;
+        document.querySelector('#summary-manpower-utilization span').textContent = `${manpowerUtilization}%`;
+    };
+
+
+    // --- SECTION 5: EVENT LISTENERS & INITIALIZATION ---
+
+    /**
+     * Attaches all necessary event listeners to the UI controls.
+     */
+    const addEventListeners = () => {
+        const inputs = document.querySelectorAll('#inputs-panel input, #analysis-panel input');
+        inputs.forEach(input => {
+            input.addEventListener('input', runAllocation);
+        });
+
+        // Special handling for dynamic train inputs
+        document.getElementById('train-table-body').addEventListener('input', (e) => {
+            const target = e.target;
+            const index = target.dataset.index;
+            const field = target.dataset.field;
+            
+            if (index && field) {
+                // For contenteditable span
+                if(target.tagName === 'SPAN') {
+                    trains[index][field] = target.textContent;
+                } else { // For input elements
+                    trains[index][field] = target.value;
+                }
+                runAllocation();
+            }
+        });
+        
+        // Handling for bay count change to re-render toggles
+        document.getElementById('num-bays').addEventListener('input', renderBayToggles);
+    };
+
+    document.getElementById('add-train-btn').addEventListener('click', () => {
+        const newId = `Train${trains.length + 1}`;
+        trains.push({ id: newId, arrival: '00:30', departure: '06:30', priority: 4 });
+        renderTrainInputs();
+        runAllocation();
+    });
+
+    /**
+     * Initial function call to set up the application on page load.
+     */
+    const initialize = () => {
+        renderTrainInputs();
+        renderBayToggles();
+        addEventListeners();
+        runAllocation(); // Run the simulation with default data
+    };
+
+    // Let's go!
+    initialize();
+
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KMRL Job Card Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Segoe+UI&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --win-bg: #E6E6E6; --win-border: #A0A0A0; --win-title-bg-start: #EFF5FB;
+            --win-title-bg-end: #D9E8F9; --win-title-text: #1E395B; --win-content-bg: #F0F0F0;
+            --btn-border: #707070; --btn-hover-border: #3C7FB1; --text-color: #000;
+        }
+        body { font-size: 14px; margin: 0; padding: 24px; transition: background-color 0.3s ease; }
+        .window { max-width: 1200px; margin: auto; display: flex; flex-direction: column; transition: all 0.3s ease; }
+        .title-bar { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; cursor: default; transition: all 0.3s ease; }
+        .title-bar-controls { display: flex; gap: 8px; }
+        .title-bar-text { font-weight: bold; transition: color 0.3s ease; }
+        /* --- CLASSIC THEME --- */
+        body.theme-classic {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--win-bg); color: var(--text-color);
+        }
+        .theme-classic #job-card-grid { display: none; }
+        .theme-classic .job-card-table { display: table; }
+        .theme-classic .window {
+            background-color: var(--win-content-bg); border: 1px solid var(--win-border);
+            border-radius: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .theme-classic .title-bar {
+            background: linear-gradient(to bottom, var(--win-title-bg-start), var(--win-title-bg-end));
+            border-bottom: 1px solid var(--win-border); border-radius: 4px 4px 0 0;
+        }
+        .theme-classic .title-bar-text { color: var(--win-title-text); }
+        .theme-classic .btn { background: linear-gradient(to bottom, #F0F0F0, #E0E0E0); border: 1px solid var(--btn-border); box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
+        .theme-classic .btn:hover { border-color: var(--btn-hover-border); }
+        .theme-classic .btn-primary { border-color: var(--btn-hover-border); background: linear-gradient(to bottom, #E0E8F0, #C0D0E0); }
+        .theme-classic input, .theme-classic select { border: 1px solid var(--win-border); box-shadow: inset 1px 1px 2px rgba(0,0,0,0.1); background-color: #FFF; }
+        .theme-classic table { background-color: #fff; }
+        .theme-classic th, .theme-classic td { border: 1px solid #D0D0D0; }
+        .theme-classic thead { background-color: #F0F0F0; }
+        .theme-classic tbody tr:hover { background-color: #EAF5FF; }
+        .theme-classic .status-bar { background-color: #f0f0f0; border-top: 1px solid #a0a0a0; }
+        /* --- MODERN THEME --- */
+        body.theme-modern { font-family: 'Inter', sans-serif; background-color: #f8f9fa; color: #212529; }
+        .theme-modern .job-card-table { display: none; }
+        .theme-modern #job-card-grid { display: grid; }
+        .theme-modern .window { background-color: #ffffff; border: 1px solid #dee2e6; border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08); }
+        .theme-modern .title-bar { background: #f1f3f5; border-bottom: 1px solid #dee2e6; border-radius: 8px 8px 0 0; }
+        .theme-modern .btn { background-color: #f8f9fa; border: 1px solid #ced4da; color: #212529; transition: all 0.2s ease; }
+        .theme-modern .btn:hover { background-color: #e9ecef; border-color: #b1b9c1; }
+        .theme-modern .btn-primary { background-color: #0078d4; color: #fff; border-color: #0078d4; }
+        .theme-modern .btn-primary:hover { background-color: #108ee9; border-color: #108ee9; }
+        .theme-modern input, .theme-modern select { border: 1px solid #ced4da; background-color: #ffffff; color: #212529; }
+        .theme-modern .status-bar { background-color: #f8f9fa; border-top: 1px solid #dee2e6; }
+        .card-grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+        .job-card { background-color: #ffffff; border: 1px solid #e9ecef; border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .job-card-header { font-weight: 600; font-size: 16px; color: #343a40; }
+        .badge { padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+        .badge-priority-Critical { background-color: #dc3545; color: white; } .badge-priority-High { background-color: #fd7e14; color: white; } .badge-priority-Normal { background-color: #0d6efd; color: white; } .badge-priority-Low { background-color: #6c757d; color: white; }
+        .badge-status-Open { background-color: #198754; color: white; } .badge-status-InProgress { background-color: #ffc107; color: #000; } .badge-status-Closed { background-color: #adb5bd; color: #000; }
+        /* --- COMMON STYLES --- */
+        .window-content { padding: 16px; flex-grow: 1; }
+        .btn { border-radius: 3px; padding: 5px 15px; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+        .btn svg { width: 16px; height: 16px; }
+        label { margin-bottom: 4px; font-size: 13px; display: block; }
+        input, select { padding: 6px 8px; border-radius: 2px; width: 100%; box-sizing: border-box; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 8px; text-align: left; }
+        .status-bar { padding: 4px 12px; font-size: 12px; text-align: left; border-radius: 0 0 4px 4px; }
+        .modal-backdrop { display: none; position: fixed; inset: 0; background-color: rgba(0,0,0,0.5); z-index: 99; }
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 100; }
+        .modal .window { min-width: 500px; max-height: 80vh; }
+        .modal-buttons { text-align: right; padding-top: 20px; display: flex; justify-content: flex-end; gap: 8px; }
+        .discussion-log { max-height: 200px; overflow-y: auto; background: #f0f0f0; padding: 8px; border-radius: 4px; margin-bottom: 8px; border: 1px solid #ccc;}
+    </style>
+</head>
+<body class="theme-modern">
+
+    <div class="window">
+        <div class="title-bar">
+            <span class="title-bar-text">🚆 KMRL Job Card Management</span>
+            <div class="title-bar-controls">
+                <button id="check-certs-btn" class="btn">Manual Refresh</button>
+                <button id="theme-switcher" class="btn">Switch View</button>
+            </div>
+        </div>
+        <div class="window-content" id="content-display">
+            <table class="job-card-table">
+                <thead><tr><th>ID</th><th>Train</th><th>Title</th><th>Priority</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody id="job-card-table-body"></tbody>
+            </table>
+            <div id="job-card-grid" class="card-grid"></div>
+        </div>
+        <div class="status-bar"><span id="status-bar-text">Ready</span></div>
+    </div>
+    
+    <div id="modal-backdrop" class="modal-backdrop"></div>
+    <div id="app-modal" class="modal">
+        <div class="window">
+            <div class="title-bar"><span class="title-bar-text" id="modal-title">Job Card Details</span></div>
+            <div class="window-content">
+                <div id="modal-content"></div>
+                <div class="modal-buttons" id="modal-buttons"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const DB_KEY = 'kmrl_fleet_db.json';
+        const body = document.body;
+        const themeSwitcherBtn = document.getElementById('theme-switcher');
+        const checkCertsBtn = document.getElementById('check-certs-btn');
+        const tableBody = document.getElementById('job-card-table-body');
+        const cardGrid = document.getElementById('job-card-grid');
+        const statusBarText = document.getElementById('status-bar-text');
+        const modalBackdrop = document.getElementById('modal-backdrop');
+        const appModal = document.getElementById('app-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalContent = document.getElementById('modal-content');
+        const modalButtons = document.getElementById('modal-buttons');
+
+        let masterData = JSON.parse(localStorage.getItem(DB_KEY));
+        let activeJobId = null;
+        const currentUser = { email: 'maintenance@kmrl.co.in', role: 'maintenance'};
+
+        const icons = {
+            edit: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z"/></svg>`,
+            chat: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>`
+        };
+
+        function applyTheme(theme) {
+            body.className = `theme-${theme}`;
+            localStorage.setItem('ui-theme', theme);
+            renderContent();
+        }
+        themeSwitcherBtn.addEventListener('click', () => {
+            applyTheme(body.classList.contains('theme-modern') ? 'classic' : 'modern');
+        });
+
+        function checkForCertificateJobs(isManual = false) {
+            const certEventString = localStorage.getItem('kmrl_certificate_failure_event');
+            if (!certEventString) {
+                if (isManual) showAlert('No new certificate failures found.');
+                return;
+            }
+            try {
+                const certEvent = JSON.parse(certEventString);
+                let newJobsCreated = 0;
+                
+                certEvent.parameters.filter(p => p.status === 'FAIL').forEach(param => {
+                    let title = `Fix: ${param.name}`;
+                    if (param.failedComponents && param.failedComponents.length > 0) {
+                        title += ` (${param.failedComponents.join(', ')})`;
+                    }
+                    const newJob = {
+                        jobId: `JC-${Date.now()}-${Math.random().toString(16).slice(2,6)}`,
+                        title: title, status: "Open", priority: "High", relatedCertId: certEvent.certId, discussion: []
+                    };
+                    const train = masterData.trains.find(t => t.trainId === certEvent.trainId);
+                    if (train && !train.jobCards.some(j => j.title === newJob.title && j.status === 'Open')) {
+                        train.jobCards.push(newJob);
+                        newJobsCreated++;
+                    }
+                });
+
+                if (newJobsCreated > 0) {
+                    localStorage.setItem(DB_KEY, JSON.stringify(masterData));
+                    publishUpdate();
+                    renderContent();
+                    showAlert(`${newJobsCreated} new job card(s) created from certificate ${certEvent.certId}.`, 'Success');
+                } else if(isManual) {
+                     showAlert(`Certificate ${certEvent.certId} processed, but no new actionable failures found.`);
+                }
+                localStorage.removeItem('kmrl_certificate_failure_event');
+            } catch (error) {
+                console.error("Error processing certificate event:", error);
+                showAlert('Error processing certificate data.', 'Error');
+                localStorage.removeItem('kmrl_certificate_failure_event');
+            }
+        }
+        checkCertsBtn.addEventListener('click', () => checkForCertificateJobs(true));
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'kmrl_certificate_failure_event') checkForCertificateJobs();
+            if (e.key === DB_KEY) {
+                masterData = JSON.parse(e.newValue);
+                renderContent();
+            }
+        });
+
+        function renderContent() {
+            tableBody.innerHTML = '';
+            cardGrid.innerHTML = '';
+            const isModern = body.classList.contains('theme-modern');
+            const allJobCards = masterData.trains.flatMap(t => t.jobCards.map(jc => ({ ...jc, trainId: t.trainId })));
+
+            allJobCards.forEach(card => {
+                const safeStatus = card.status.replace(/\s+/g, '');
+                if (isModern) {
+                    const cardElement = document.createElement('div');
+                    cardElement.className = 'job-card';
+                    cardElement.innerHTML = `
+                        <div class="job-card-header">${card.trainId} - ${card.jobId}</div>
+                        <div>${card.title}</div>
+                        <div style="margin-top: auto; display:flex; gap: 8px;">
+                            <span class="badge badge-priority-${card.priority}">${card.priority}</span>
+                            <span class="badge badge-status-${safeStatus}">${card.status}</span>
+                        </div>
+                        <div style="position:absolute; top:12px; right:12px; display:flex; gap: 8px;">
+                            <button class="btn edit-btn" data-id="${card.jobId}">${icons.edit}</button>
+                        </div>`;
+                    cardGrid.appendChild(cardElement);
+                } else {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${card.jobId}</td> <td>${card.trainId}</td> <td>${card.title}</td>
+                        <td>${card.priority}</td> <td>${card.status}</td>
+                        <td>
+                            <button class="btn edit-btn" data-id="${card.jobId}">${icons.edit} Details</button>
+                        </td>`;
+                    tableBody.appendChild(row);
+                }
+            });
+            updateStatus(`Displaying ${allJobCards.length} job card(s).`);
+        }
+        
+        function openJobCardModal(jobId) {
+            activeJobId = jobId;
+            let jobCard, trainId;
+            masterData.trains.forEach(train => {
+                const found = train.jobCards.find(jc => jc.jobId === jobId);
+                if (found) { jobCard = found; trainId = train.trainId; }
+            });
+            if (!jobCard) return;
+
+            modalTitle.textContent = `Details for ${jobId} (${trainId})`;
+            modalContent.innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div><label>Priority</label> <select id="modal-priority">${['Critical','High','Normal','Low'].map(p=>`<option value="${p}" ${p===jobCard.priority ?'selected':''}>${p}</option>`).join('')}</select></div>
+                    <div><label>Status</label> <select id="modal-status">${['Open','In Progress','Closed'].map(s=>`<option value="${s}" ${s===jobCard.status ?'selected':''}>${s}</option>`).join('')}</select></div>
+                </div>
+                <div style="margin-top: 16px;">
+                    <label style="font-weight: bold;">Discussion</label>
+                    <div class="discussion-log" id="discussion-log"></div>
+                    <div style="display:flex; gap: 5px;">
+                        <input type="text" id="discussion-input" placeholder="Type message...">
+                        <button id="add-discussion-btn" class="btn btn-primary">Send</button>
+                    </div>
+                </div>`;
+            modalButtons.innerHTML = `<button id="modal-cancel" class="btn">Cancel</button><button id="modal-save" class="btn btn-primary">Save Changes</button>`;
+            
+            renderDiscussion(jobCard.discussion);
+            
+            document.getElementById('modal-save').onclick = saveJobCardChanges;
+            document.getElementById('modal-cancel').onclick = hideModal;
+            document.getElementById('add-discussion-btn').onclick = addDiscussionMessage;
+            
+            modalBackdrop.style.display = 'block'; appModal.style.display = 'block';
+        }
+
+        function saveJobCardChanges() {
+            const newStatus = document.getElementById('modal-status').value;
+            const newPriority = document.getElementById('modal-priority').value;
+            masterData.trains.forEach(train => {
+                const card = train.jobCards.find(jc => jc.jobId === activeJobId);
+                if (card) { card.status = newStatus; card.priority = newPriority; }
+            });
+            localStorage.setItem(DB_KEY, JSON.stringify(masterData));
+            publishUpdate();
+            renderContent();
+            hideModal();
+        }
+
+        function addDiscussionMessage() {
+            const input = document.getElementById('discussion-input');
+            if(!input.value.trim()) return;
+            let jobCard;
+            masterData.trains.forEach(t => {
+                const found = t.jobCards.find(jc => jc.jobId === activeJobId);
+                if(found) jobCard = found;
+            });
+            if(jobCard) {
+                jobCard.discussion.push({user: currentUser.email, timestamp: new Date().toISOString(), message: input.value.trim()});
+                renderDiscussion(jobCard.discussion);
+                localStorage.setItem(DB_KEY, JSON.stringify(masterData));
+                publishUpdate();
+                input.value = '';
+            }
+        }
+
+        function renderDiscussion(discussion) {
+            const logEl = document.getElementById('discussion-log');
+            logEl.innerHTML = (discussion || []).map(msg => `<div><small><strong>${msg.user.split('@')[0]}</strong> (${new Date(msg.timestamp).toLocaleTimeString()}): ${msg.message}</small></div>`).join('');
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function publishUpdate() {
+            const allJobCards = masterData.trains.flatMap(t => t.jobCards.map(jc => ({ ...jc, trainId: t.trainId })));
+            localStorage.setItem('kmrl_job_card_update_event', JSON.stringify(allJobCards));
+        }
+
+        function hideModal() { modalBackdrop.style.display = 'none'; appModal.style.display = 'none'; activeJobId = null; }
+        function showAlert(message, title='Alert') {
+             modalTitle.textContent = title;
+             modalContent.innerHTML = `<p>${message}</p>`;
+             modalButtons.innerHTML = `<button class="btn btn-primary">OK</button>`;
+             modalButtons.querySelector('button').onclick = hideModal;
+             modalBackdrop.style.display = 'block'; appModal.style.display = 'block';
+        }
+        function updateStatus(message) { statusBarText.textContent = message; }
+
+        contentDisplay.addEventListener('click', (e) => {
+            const target = e.target.closest('.edit-btn');
+            if (target) openJobCardModal(target.dataset.id);
+        });
+
+        applyTheme(localStorage.getItem('ui-theme') || 'modern');
+        checkForCertificateJobs();
+    });
+    </script>
+</body>
+</html>
+

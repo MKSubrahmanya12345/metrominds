@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KMRL Maintenance Bridge - Maximo (Win7 Sim)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        /* --- THEME VARIABLES --- */
+        :root {
+            /* Classic Theme (Default) */
+            --win-bg: #E6E6E6;
+            --win-border: #A0A0A0;
+            --win-title-bg-start: #EFF5FB;
+            --win-title-bg-end: #D9E8F9;
+            --win-title-text: #1E395B;
+            --win-content-bg: #F0F0F0;
+            --btn-border: #707070;
+            --btn-hover-border: #3C7FB1;
+            --text-color: #000;
+        }
+
+        /* --- BASE STYLES --- */
+        body {
+            font-size: 14px;
+            margin: 0;
+            padding: 24px;
+            transition: background-color 0.3s ease;
+        }
+
+        .window {
+            max-width: 900px;
+            margin: auto;
+            display: flex;
+            flex-direction: column;
+            transition: background-color 0.3s ease, border 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .title-bar {
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: default;
+            transition: background 0.3s ease, border-bottom 0.3s ease;
+        }
+        
+        .title-bar-text {
+            font-weight: bold;
+            transition: color 0.3s ease;
+        }
+
+        /* --- CLASSIC THEME STYLES --- */
+        body.theme-classic {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--win-bg);
+            color: var(--text-color);
+        }
+        .theme-classic #job-card-grid { display: none; }
+        .theme-classic .job-card-table { display: table; }
+
+        .theme-classic .window {
+            background-color: var(--win-content-bg);
+            border: 1px solid var(--win-border);
+            border-radius: 5px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .theme-classic .title-bar {
+            background: linear-gradient(to bottom, var(--win-title-bg-start), var(--win-title-bg-end));
+            border-bottom: 1px solid var(--win-border);
+            border-radius: 4px 4px 0 0;
+        }
+
+        .theme-classic .title-bar-text { color: var(--win-title-text); }
+        .theme-classic .group-box { border: 1px solid #C0C0C0; background-color: #F7F7F7; }
+        .theme-classic .btn {
+            background: linear-gradient(to bottom, #F0F0F0, #E0E0E0);
+            border: 1px solid var(--btn-border);
+            box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+        }
+        .theme-classic .btn:hover { border-color: var(--btn-hover-border); }
+        .theme-classic .btn:active { box-shadow: inset 1px 1px 2px rgba(0,0,0,0.2); }
+        .theme-classic .btn-primary { border-color: var(--btn-hover-border); }
+        .theme-classic input, .theme-classic select {
+            border: 1px solid var(--win-border);
+            box-shadow: inset 1px 1px 2px rgba(0,0,0,0.1);
+            background-color: #FFF;
+        }
+        .theme-classic table { background-color: #fff; }
+        .theme-classic th, .theme-classic td { border: 1px solid #D0D0D0; }
+        .theme-classic thead { background-color: #F0F0F0; }
+        .theme-classic tbody tr:hover { background-color: #EAF5FF; }
+        .theme-classic .status-bar { background-color: #f0f0f0; border-top: 1px solid #a0a0a0; }
+
+        /* --- MODERN THEME STYLES --- */
+        body.theme-modern {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+            color: #212529;
+        }
+        .theme-modern .job-card-table { display: none; }
+        .theme-modern #job-card-grid { display: grid; }
+
+        .theme-modern .window {
+            background-color: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        }
+        
+        .theme-modern .title-bar {
+            background: #f1f3f5;
+            border-bottom: 1px solid #dee2e6;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .theme-modern .title-bar-text { color: #212529; }
+        .theme-modern .group-box { border: 1px solid #dee2e6; background-color: #ffffff; }
+        .theme-modern .btn {
+            background-color: #f8f9fa;
+            border: 1px solid #ced4da;
+            color: #212529;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        .theme-modern .btn:hover { background-color: #e9ecef; border-color: #b1b9c1; }
+        .theme-modern .btn:active { background-color: #dee2e6; }
+        .theme-modern .btn-primary { background-color: #0078d4; border-color: #0078d4; }
+        .theme-modern .btn-primary:hover { background-color: #108ee9; border-color: #108ee9; }
+        .theme-modern input, .theme-modern select {
+            border: 1px solid #ced4da;
+            background-color: #ffffff;
+            color: #212529;
+        }
+        .theme-modern input:focus, .theme-modern select:focus { outline: 2px solid #0078d4; border-color: #0078d4; }
+        .theme-modern .status-bar { background-color: #f8f9fa; border-top: 1px solid #dee2e6; }
+        .theme-modern .modal .window { background-color: #ffffff; }
+        
+        /* Modern Card Styles */
+        .card-grid {
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 16px;
+        }
+        .job-card {
+            background-color: #ffffff;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            position: relative;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .job-card-header {
+            font-weight: 600;
+            font-size: 16px;
+            color: #343a40;
+        }
+        .job-card-title {
+            color: #495057;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .job-card-details {
+            display: flex;
+            gap: 12px;
+            font-size: 13px;
+            color: #6c757d;
+        }
+        .job-card-badges {
+            display: flex;
+            gap: 8px;
+            margin-top: auto; /* Pushes badges to the bottom */
+            padding-top: 12px;
+        }
+        .badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .badge-priority-Critical { background-color: #8B0000; color: white; }
+        .badge-priority-High { background-color: #D2691E; color: white; }
+        .badge-priority-Normal { background-color: #0078d4; color: white; }
+        .badge-priority-Low { background-color: #555; color: white; }
+        .badge-status-Open { background-color: #107C10; color: white; }
+        .badge-status-InProgress { background-color: #B78700; color: white; }
+        .badge-status-Closed { background-color: #555; color: white; }
+        
+        .job-card-actions {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            display: flex;
+            gap: 8px;
+        }
+        .job-card-actions .btn {
+            padding: 4px;
+            background-color: transparent;
+            border: none;
+        }
+
+
+        /* --- COMMON STYLES (Unaffected by theme) --- */
+        .window-content { padding: 16px; flex-grow: 1; }
+        .group-box { border-radius: 3px; padding: 16px; margin-bottom: 20px; }
+        .group-box-title { font-weight: bold; margin-bottom: 12px; }
+        .btn { border-radius: 3px; padding: 5px 15px; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+        .btn svg { width: 16px; height: 16px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+        .form-field { display: flex; flex-direction: column; }
+        label { margin-bottom: 4px; font-size: 13px; }
+        input, select { padding: 6px 8px; border-radius: 2px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 8px; text-align: left; }
+        .status-bar { padding: 4px 12px; font-size: 12px; text-align: left; border-radius: 0 0 4px 4px; }
+        .modal-backdrop { display: none; position: fixed; inset: 0; background-color: rgba(255, 255, 255, 0.5); z-index: 99; }
+        .modal { display: none; position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%); z-index: 100; }
+        .modal .window { min-width: 350px; }
+        .modal-content { padding: 20px; font-size: 14px; }
+        .modal-buttons { text-align: right; padding-top: 20px; display: flex; justify-content: flex-end; gap: 8px; }
+    </style>
+</head>
+<body class="theme-classic">
+
+    <main id="app-container">
+        <div class="window">
+            <div class="title-bar">
+                <span class="title-bar-text">🚆 KMRL Job Card Management</span>
+                <button id="theme-switcher" class="btn" title="Switch UI Theme">Switch View</button>
+            </div>
+            <div class="window-content">
+                <div class="group-box">
+                    <h2 class="group-box-title">Job Card Details</h2>
+                    <form id="job-card-form" class="form-grid">
+                        <input type="hidden" id="form-mode" value="add">
+                        <div class="form-field">
+                            <label for="id">Job Card ID</label>
+                            <input type="text" id="id" placeholder="e.g., JC-1003" required>
+                        </div>
+                        <div class="form-field">
+                            <label for="trainId">Train ID</label>
+                            <input type="text" id="trainId" placeholder="e.g., KM-05" required>
+                        </div>
+                        <div class="form-field">
+                            <label for="priority">Priority</label>
+                            <select id="priority">
+                                <option>Critical</option>
+                                <option>High</option>
+                                <option>Normal</option>
+                                <option>Low</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label for="status">Status</label>
+                            <select id="status">
+                                <option>Open</option>
+                                <option>In Progress</option>
+                                <option>Closed</option>
+                            </select>
+                        </div>
+                        <div class="form-field" style="grid-column: 1 / -1;">
+                             <label for="title">Title</label>
+                            <input type="text" id="title" placeholder="Brief description of the task..." required>
+                        </div>
+                        <div class="form-field">
+                             <label for="dueDate">Due Date</label>
+                            <input type="date" id="dueDate">
+                        </div>
+                    </form>
+                    <div style="text-align: right; margin-top: 16px;">
+                        <button id="form-submit-btn" class="btn btn-primary">Add Job Card</button>
+                        <button id="form-cancel-btn" class="btn" style="display: none;">Cancel</button>
+                    </div>
+                </div>
+                
+                <div id="content-display">
+                    <table class="job-card-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Train</th>
+                                <th>Title</th>
+                                <th>Priority</th>
+                                <th>Status</th>
+                                <th>Due Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="job-card-table-body"></tbody>
+                    </table>
+                    <div id="job-card-grid" class="card-grid"></div>
+                </div>
+
+            </div>
+            <div class="status-bar">
+                <span id="status-bar-text">Ready</span>
+            </div>
+        </div>
+    </main>
+    
+    <div id="modal-backdrop" class="modal-backdrop"></div>
+    <div id="app-modal" class="modal">
+        <div class="window">
+            <div class="title-bar">
+                <span id="modal-title" class="title-bar-text">Confirmation</span>
+            </div>
+            <div class="window-content">
+                <p id="modal-message"></p>
+                <div id="modal-buttons" class="modal-buttons"></div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const body = document.body;
+        const themeSwitcherBtn = document.getElementById('theme-switcher');
+        const contentDisplay = document.getElementById('content-display');
+
+        const form = document.getElementById('job-card-form');
+        const formModeInput = document.getElementById('form-mode');
+        const formSubmitBtn = document.getElementById('form-submit-btn');
+        const formCancelBtn = document.getElementById('form-cancel-btn');
+        const tableBody = document.getElementById('job-card-table-body');
+        const cardGrid = document.getElementById('job-card-grid');
+        const statusBarText = document.getElementById('status-bar-text');
+        
+        const idInput = document.getElementById('id');
+        const trainIdInput = document.getElementById('trainId');
+        const titleInput = document.getElementById('title');
+        const priorityInput = document.getElementById('priority');
+        const statusInput = document.getElementById('status');
+        const dueDateInput = document.getElementById('dueDate');
+
+        const modalBackdrop = document.getElementById('modal-backdrop');
+        const appModal = document.getElementById('app-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalButtons = document.getElementById('modal-buttons');
+
+
+        let jobCards = [
+            { id: "JC-1001", trainId: "KM-01", title: "Brake System Inspection", priority: "Critical", status: "Open", dueDate: "2025-09-24" },
+            { id: "JC-1002", trainId: "KM-03", title: "Door Alignment Check", priority: "Normal", status: "Closed", dueDate: "2025-09-26" },
+        ];
+        
+        const icons = {
+            edit: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M13.488 2.513a1.75 1.75 0 0 0-2.475 0L3 10.536V13h2.464l7.976-7.976a1.75 1.75 0 0 0 0-2.475Z" /><path d="M2 14h12v1H2v-1Z" /></svg>`,
+            delete: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M5 3.25V4H2.75a.75.75 0 0 0 0 1.5h.3l.815 8.15A1.5 1.5 0 0 0 5.357 15h5.285a1.5 1.5 0 0 0 1.492-1.35l.815-8.15h.3a.75.75 0 0 0 0-1.5H11v-.75A2.25 2.25 0 0 0 8.75 1h-1.5A2.25 2.25 0 0 0 5 3.25Zm2.25-.75a.75.75 0 0 0-.75.75V4h3v-.75a.75.75 0 0 0-.75-.75h-1.5ZM6.09 5.5h3.82l-.76 7.6a.25.25 0 0 1-.248.25h-1.804a.25.25 0 0 1-.248-.25l-.76-7.6Z" clip-rule="evenodd" /></svg>`
+        };
+
+        function applyTheme(theme) {
+            body.className = `theme-${theme}`;
+            localStorage.setItem('ui-theme', theme);
+            renderContent(); 
+        }
+
+        themeSwitcherBtn.addEventListener('click', () => {
+            const currentTheme = body.classList.contains('theme-modern') ? 'modern' : 'classic';
+            const newTheme = currentTheme === 'classic' ? 'modern' : 'classic';
+            applyTheme(newTheme);
+        });
+
+        const savedTheme = localStorage.getItem('ui-theme') || 'classic';
+        applyTheme(savedTheme);
+
+        function renderContent() {
+            tableBody.innerHTML = '';
+            cardGrid.innerHTML = '';
+            const isModern = body.classList.contains('theme-modern');
+
+            jobCards.forEach(card => {
+                if (isModern) {
+                    const cardElement = document.createElement('div');
+                    cardElement.className = 'job-card';
+                    const safeStatus = card.status.replace(/\s+/g, '');
+                    cardElement.innerHTML = `
+                        <div class="job-card-actions">
+                            <button class="btn edit-btn" title="Edit Job Card" data-id="${card.id}">${icons.edit}</button>
+                            <button class="btn delete-btn" title="Delete Job Card" data-id="${card.id}">${icons.delete}</button>
+                        </div>
+                        <div class="job-card-header">${card.id}</div>
+                        <div class="job-card-title">${card.title}</div>
+                        <div class="job-card-details">
+                            <span><strong>Train:</strong> ${card.trainId}</span>
+                            <span><strong>Due:</strong> ${card.dueDate || 'N/A'}</span>
+                        </div>
+                        <div class="job-card-badges">
+                            <span class="badge badge-priority-${card.priority}">${card.priority}</span>
+                            <span class="badge badge-status-${safeStatus}">${card.status}</span>
+                        </div>
+                    `;
+                    cardGrid.appendChild(cardElement);
+                } else {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${card.id}</td>
+                        <td>${card.trainId}</td>
+                        <td>${card.title}</td>
+                        <td>${card.priority}</td>
+                        <td>${card.status}</td>
+                        <td>${card.dueDate}</td>
+                        <td style="text-align: center;">
+                            <button class="btn edit-btn" title="Edit Job Card" data-id="${card.id}">${icons.edit}</button>
+                            <button class="btn delete-btn" title="Delete Job Card" data-id="${card.id}">${icons.delete}</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                }
+            });
+            updateStatus(`Displaying ${jobCards.length} job card(s).`);
+        }
+        
+        function updateStatus(message) { statusBarText.textContent = message; }
+        function resetForm() {
+            form.reset();
+            formModeInput.value = 'add';
+            idInput.disabled = false;
+            formSubmitBtn.textContent = 'Add Job Card';
+            formCancelBtn.style.display = 'none';
+        }
+        function populateFormForEdit(cardId) {
+            const card = jobCards.find(c => c.id === cardId);
+            if (!card) return;
+            formModeInput.value = 'edit';
+            idInput.value = card.id;
+            idInput.disabled = true;
+            trainIdInput.value = card.trainId;
+            titleInput.value = card.title;
+            priorityInput.value = card.priority;
+            statusInput.value = card.status;
+            dueDateInput.value = card.dueDate;
+            formSubmitBtn.textContent = 'Update Job Card';
+            formCancelBtn.style.display = 'inline-flex';
+        }
+        function showModal(title, message, buttons) {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            modalButtons.innerHTML = '';
+            buttons.forEach(btnInfo => {
+                const button = document.createElement('button');
+                button.className = `btn ${btnInfo.class || ''}`;
+                button.textContent = btnInfo.text;
+                button.onclick = btnInfo.handler;
+                modalButtons.appendChild(button);
+            });
+            modalBackdrop.style.display = 'block';
+            appModal.style.display = 'block';
+        }
+        function hideModal() {
+            modalBackdrop.style.display = 'none';
+            appModal.style.display = 'none';
+        }
+        function showAlert(message, title = 'Alert') {
+            showModal(title, message, [{ text: 'OK', class: 'btn-primary', handler: hideModal }]);
+        }
+
+        formSubmitBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (!idInput.value || !trainIdInput.value || !titleInput.value) {
+                showAlert('Job Card ID, Train ID, and Title are required.');
+                return;
+            }
+            const cardData = {
+                id: idInput.value, trainId: trainIdInput.value, title: titleInput.value,
+                priority: priorityInput.value, status: statusInput.value, dueDate: dueDateInput.value,
+            };
+            if (formModeInput.value === 'add') {
+                if (jobCards.some(c => c.id === cardData.id)) {
+                    showAlert('Job Card with this ID already exists.');
+                    return;
+                }
+                jobCards.push(cardData);
+                updateStatus(`Job Card ${cardData.id} created successfully.`);
+            } else {
+                const index = jobCards.findIndex(c => c.id === cardData.id);
+                if (index !== -1) {
+                    jobCards[index] = cardData;
+                }
+                updateStatus(`Job Card ${cardData.id} updated successfully.`);
+            }
+            renderContent();
+            resetForm();
+        });
+        
+        formCancelBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            resetForm();
+            updateStatus('Edit operation cancelled.');
+        });
+
+        contentDisplay.addEventListener('click', (e) => {
+            const target = e.target.closest('button');
+            if (!target) return;
+            const cardId = target.dataset.id;
+            if (!cardId) return;
+
+            if (target.classList.contains('edit-btn')) {
+                populateFormForEdit(cardId);
+            } else if (target.classList.contains('delete-btn')) {
+                showModal('Delete Confirmation', `Are you sure you want to delete Job Card ${cardId}?`, [
+                    { text: 'Cancel', handler: hideModal },
+                    { text: 'Delete', class: 'btn-primary', handler: () => {
+                        jobCards = jobCards.filter(c => c.id !== cardId);
+                        renderContent();
+                        resetForm();
+                        updateStatus(`Job Card ${cardId} was deleted.`);
+                        hideModal();
+                    }}
+                ]);
+            }
+        });
+
+        renderContent();
+    });
+    </script>
+</body>
+</html>

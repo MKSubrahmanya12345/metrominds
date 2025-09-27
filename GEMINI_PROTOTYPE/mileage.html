@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KMRL Mileage Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --win-bg: #E6E6E6; --win-border: #A0A0A0; --win-title-bg-start: #EFF5FB;
+            --win-title-bg-end: #D9E8F9; --win-title-text: #1E395B; --win-content-bg: #F0F0F0;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 14px;
+            margin: 0; padding: 24px; background-color: var(--win-bg); color: #000;
+        }
+        .window {
+            max-width: 1200px; margin: auto; display: flex; flex-direction: column;
+            background-color: var(--win-content-bg); border: 1px solid var(--win-border);
+            border-radius: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .title-bar {
+            padding: 8px 12px;
+            background: linear-gradient(to bottom, var(--win-title-bg-start), var(--win-title-bg-end));
+            border-bottom: 1px solid var(--win-border); border-radius: 4px 4px 0 0;
+        }
+        .title-bar-text { font-weight: bold; color: var(--win-title-text); }
+        .window-content { padding: 16px; flex-grow: 1; }
+    </style>
+</head>
+<body>
+    <div class="window">
+        <div class="title-bar"><span class="title-bar-text">📈 Bogie Mileage Monitor</span></div>
+        <div class="window-content">
+            <canvas id="mileageChart"></canvas>
+        </div>
+    </div>
+    <script>
+        const DB_KEY = 'kmrl_fleet_db.json';
+        let masterData = JSON.parse(localStorage.getItem(DB_KEY));
+        const MILEAGE_THRESHOLD = 20000;
+        let chartInstance = null;
+        
+        function renderChart() {
+            if (!masterData) return;
+            const ctx = document.getElementById('mileageChart').getContext('2d');
+            const sortedBogies = [...masterData.bogies].sort((a, b) => b.mileage - a.mileage);
+
+            const labels = sortedBogies.map(b => b.bogieId);
+            const data = sortedBogies.map(b => b.mileage);
+            const backgroundColors = sortedBogies.map(b => b.mileage > MILEAGE_THRESHOLD ? 'rgba(239, 68, 68, 0.7)' : 'rgba(59, 130, 246, 0.7)');
+            
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Bogie Mileage (km)', data: data,
+                        backgroundColor: backgroundColors, borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', responsive: true,
+                    plugins: { legend: { display: false }, title: { display: true, text: 'Current Mileage for All Bogies' }},
+                    scales: { x: { beginAtZero: true } }
+                }
+            });
+        }
+        
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'kmrl_supervisor_daily_plan' && event.newValue) {
+                console.log("Mileage: Daily plan received. Simulating end-of-day.");
+                const dailyPlan = JSON.parse(event.newValue);
+                const runningBogieIds = new Set(dailyPlan.flatMap(train => train.composition));
+                const KM_PER_DAY = 250;
+                let updated = false;
+                masterData.bogies.forEach(bogie => {
+                    if (runningBogieIds.has(bogie.bogieId)) {
+                        bogie.mileage += KM_PER_DAY;
+                        updated = true;
+                    }
+                });
+                if (updated) {
+                    alert('Mileage: End of day simulated. Bogie mileages have been updated.');
+                    localStorage.setItem(DB_KEY, JSON.stringify(masterData));
+                    renderChart();
+                }
+            } else if (event.key === DB_KEY) {
+                masterData = JSON.parse(event.newValue);
+                renderChart();
+            }
+        });
+        renderChart();
+    </script>
+</body>
+</html>
+

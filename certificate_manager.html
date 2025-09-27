@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KMRL Certificate Management (Classic UI)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --win-bg: #E6E6E6;
+            --win-border: #A0A0A0;
+            --win-title-bg-start: #EFF5FB;
+            --win-title-bg-end: #D9E8F9;
+            --win-title-text: #1E395B;
+            --win-content-bg: #F0F0F0;
+            --btn-border: #707070;
+            --btn-hover-border: #3C7FB1;
+            --text-color: #000;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 14px;
+            margin: 0;
+            padding: 24px;
+            background-color: var(--win-bg);
+            color: var(--text-color);
+        }
+
+        .window {
+            max-width: 1000px;
+            margin: auto;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--win-content-bg);
+            border: 1px solid var(--win-border);
+            border-radius: 5px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .title-bar {
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: default;
+            background: linear-gradient(to bottom, var(--win-title-bg-start), var(--win-title-bg-end));
+            border-bottom: 1px solid var(--win-border);
+            border-radius: 4px 4px 0 0;
+        }
+        
+        .title-bar-controls { display: flex; gap: 8px; align-items: center;}
+        .title-bar-text { font-weight: bold; color: var(--win-title-text); }
+        .window-content { padding: 16px; flex-grow: 1; }
+
+        .group-box {
+            border: 1px solid #C0C0C0;
+            background-color: #F7F7F7;
+            border-radius: 3px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        .group-box-title { font-weight: bold; margin-bottom: 12px; }
+        
+        .btn {
+            background: linear-gradient(to bottom, #F0F0F0, #E0E0E0);
+            border: 1px solid var(--btn-border);
+            box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+            border-radius: 3px;
+            padding: 5px 15px;
+            font-size: 14px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center; justify-content: center; gap: 6px;
+        }
+        .btn:hover { border-color: var(--btn-hover-border); }
+        .btn:active { box-shadow: inset 1px 1px 2px rgba(0,0,0,0.2); }
+        .btn-primary { border-color: var(--btn-hover-border); background: linear-gradient(to bottom, #E0E8F0, #C0D0E0); }
+        .btn-danger { background: linear-gradient(to bottom, #f5d3d3, #f2c3c3); border-color: #c99; }
+        .btn-danger:hover { border-color: #c00; }
+        
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; align-items: end;}
+        .form-field { display: flex; flex-direction: column; }
+        label { margin-bottom: 4px; font-size: 13px; }
+        input, select {
+            padding: 6px 8px;
+            border-radius: 2px;
+            border: 1px solid var(--win-border);
+            box-shadow: inset 1px 1px 2px rgba(0,0,0,0.1);
+            background-color: #FFF;
+        }
+
+        table { width: 100%; border-collapse: collapse; background-color: #fff;}
+        th, td { padding: 8px; text-align: left; border: 1px solid #D0D0D0; }
+        thead { background-color: #F0F0F0; }
+        tbody tr:hover { background-color: #EAF5FF; }
+
+        .page { display: none; }
+        .page.visible { display: block; }
+        
+        .status-dot { width: 1rem; height: 1rem; border-radius: 50%; display: inline-block; border: 1px solid #777;}
+
+        .modal-backdrop { display: none; position: fixed; inset: 0; background-color: rgba(0,0,0,0.5); z-index: 99; }
+        .modal { display: none; position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%); z-index: 100; }
+        .modal .window { min-width: 400px; }
+        .modal-buttons { text-align: right; padding-top: 20px; display: flex; justify-content: flex-end; gap: 8px; }
+        
+        @media print {
+            body, .window {
+                background-color: #fff;
+                margin: 0;
+                padding: 0;
+                box-shadow: none;
+                border: none;
+            }
+            .page.visible {
+                visibility: hidden;
+            }
+             #certificate-page-container, #certificate-page-container * {
+                visibility: visible;
+            }
+            #certificate-page-container {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main id="app-container">
+        <!-- Login Page -->
+        <div id="login-page" class="page visible">
+            <div class="window" style="max-width: 450px; margin-top: 10vh;">
+                <div class="title-bar"><span class="title-bar-text">🔒 Department Login</span></div>
+                <div class="window-content">
+                    <form id="login-form">
+                        <p style="margin-bottom: 20px; text-align: center;">Please enter your credentials to continue.</p>
+                        <div class="form-field" style="margin-bottom: 12px;">
+                            <label for="email">Email Address</label>
+                            <input type="email" id="email" required>
+                        </div>
+                        <div class="form-field" style="margin-bottom: 12px;">
+                            <label for="password">Password</label>
+                            <input type="password" id="password" required>
+                        </div>
+                        <p id="login-error" style="color: red; font-size: 12px; margin-bottom: 12px; display: none;">Invalid email or password.</p>
+                        <div style="text-align: right; margin-top: 10px;">
+                            <button type="submit" class="btn btn-primary">Sign In</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Application View (hidden initially) -->
+        <div id="main-app" class="page">
+            <div class="window">
+                <div class="title-bar">
+                    <span class="title-bar-text">✅ KMRL Certificate Portal</span>
+                    <div class="title-bar-controls">
+                        <span id="user-role-display" style="margin-right: 16px; font-weight: bold;"></span>
+                        <button id="logout-btn" class="btn btn-danger">Logout</button>
+                    </div>
+                </div>
+                <div class="window-content">
+                    <!-- This container will hold the current view -->
+                    <div id="view-container"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Toast Notification -->
+    <div id="toast-notification" style="display: none; position: fixed; bottom: 20px; right: 20px; padding: 10px 20px; border-radius: 5px; color: white; z-index: 101; font-size: 14px;"></div>
+
+    <!-- Modals -->
+    <div id="modal-backdrop" class="modal-backdrop"></div>
+    <div id="app-modal" class="modal">
+        <div class="window">
+            <div class="title-bar"><span id="modal-title" class="title-bar-text">Confirmation</span></div>
+            <div class="window-content">
+                <p id="modal-message"></p>
+                <div id="modal-buttons" class="modal-buttons"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DATA AND CONFIG ---
+        let fleetData = {};
+        for (let i = 1; i <= 25; i++) {
+            fleetData[`Train ${i}`] = { fitness: [], tele: [], signalling: [] };
+        }
+        let activeUserRole = null;
+        let lastGeneratedCert = null;
+
+        const credentials = {
+            'supervisor@gmail.com': '12345678', 'fitness@gmail.com': '12345678',
+            'tele@gmail.com': '12345678', 'signalling@gmail.com': '12345678'
+        };
+        const parameterConfig = {
+            fitness: {
+                title: "Rolling Stock Fitness",
+                params: {
+                    'Bogie & Suspension': { quickRemarks: ['Within tolerance', 'Minor adjustment needed'] },
+                    'Brake System (Pneumatic)': { quickRemarks: ['Pad wear normal', 'No leaks', 'Pressure OK'] },
+                    'Passenger Doors': { quickRemarks: ['Obstruction test OK', 'Sensors aligned'] },
+                    'HVAC System': { quickRemarks: ['Cooling efficiency normal', 'Filters clean'] },
+                    'Coupler Mechanism': { quickRemarks: ['Secure', 'No visible stress'] }
+                }
+            },
+            tele: {
+                title: "Telecommunications Fitness",
+                params: {
+                    'Onboard CCTV': {
+                        subParameters: Array.from({ length: 16 }, (_, i) => `Camera ${i + 1}`),
+                        quickRemarks: ['All cameras operational', 'Clear feed']
+                    },
+                    'Radio System (TETRA)': { quickRemarks: ['Clear comms with OCC', 'No static'] },
+                    'Passenger Info Display': { quickRemarks: ['All displays functional', 'No dead pixels'] },
+                    'Public Address System': { quickRemarks: ['Announcements clear', 'Volume OK'] },
+                    'Emergency Comms': { quickRemarks: ['Passenger-Driver comms OK'] }
+                }
+            },
+            signalling: {
+                title: "Signalling Fitness",
+                params: {
+                    'Automatic Train Control': { quickRemarks: ['Speed limits enforced', 'Responds correctly'] },
+                    'Automatic Train Protect': { quickRemarks: ['Emergency braking OK', 'ATP system active'] },
+                    'Onboard Computer': { quickRemarks: ['No faults logged', 'Diagnostics clear'] },
+                    'Event Data Recorder': { quickRemarks: ['Data logging verified'] },
+                    'Track Circuit Interface': { quickRemarks: ['Responding to track signals'] }
+                }
+            }
+        };
+
+        // --- DOM ELEMENTS ---
+        const loginPage = document.getElementById('login-page');
+        const mainAppPage = document.getElementById('main-app');
+        const viewContainer = document.getElementById('view-container');
+        const loginForm = document.getElementById('login-form');
+        const logoutBtn = document.getElementById('logout-btn');
+        const loginError = document.getElementById('login-error');
+        const userRoleDisplay = document.getElementById('user-role-display');
+        const modalBackdrop = document.getElementById('modal-backdrop');
+        const appModal = document.getElementById('app-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalButtons = document.getElementById('modal-buttons');
+        const toast = document.getElementById('toast-notification');
+
+        let confirmationStep = 1;
+        let currentFormData = {};
+        
+        // --- UI & VIEW MANAGEMENT ---
+        function showPage(pageName) {
+            loginPage.classList.toggle('visible', pageName === 'login');
+            mainAppPage.classList.toggle('visible', pageName === 'app');
+        }
+
+        function createDashboardUI(dept) {
+            const config = parameterConfig[dept];
+            let html = `
+                <form id="${dept}-form" class="certificate-form" novalidate>
+                    <div class="group-box">
+                        <h2 class="group-box-title">${config.title} Certificate Issuance</h2>
+                        <div class="form-grid" style="grid-template-columns: 2fr 1fr;">
+                            <div class="form-field">
+                                <label>Select Train</label>
+                                <select class="train-select" required><option value="" disabled selected>Choose a trainset...</option>`;
+            for (let i = 1; i <= 25; i++) {
+                html += `<option value="Train ${i}">Train #${String(i).padStart(2, '0')}</option>`;
+            }
+            html += `</select>
+                            </div>
+                            <div class="form-field">
+                                <button type="button" class="history-btn btn" style="display: none;">View History</button>
+                            </div>
+                        </div>
+                        <div class="form-field" style="margin-top: 12px;">
+                            <label>Certificate Expiry Date</label>
+                            <input type="date" class="expiry-date" required>
+                        </div>
+                    </div>
+                    <div class="group-box">
+                        <h2 class="group-box-title">Inspection Parameters</h2>
+                        <div class="parameters-container" style="display: flex; flex-direction: column; gap: 12px;">`;
+            
+            Object.entries(config.params).forEach(([paramName, paramConfig]) => {
+                let quickRemarkButtons = (paramConfig.quickRemarks || []).map(r => 
+                    `<button type="button" class="quick-remark-btn btn" style="padding: 2px 8px; font-size: 11px;">${r}</button>`
+                ).join(' ');
+
+                html += `<div class="parameter-row" style="border: 1px solid #ddd; padding: 12px; border-radius: 3px; background-color: #fff;">
+                    <div style="display: grid; grid-template-columns: 1.5fr 1fr 2fr; gap: 12px; align-items: center;">
+                        <label>${paramName}</label>
+                        <select data-param-name="${paramName}" class="param-status" required>
+                            <option value="" disabled selected>Status</option><option value="Pass">Pass</option><option value="Fail">Fail</option>
+                        </select>
+                        <input type="text" class="param-remarks" placeholder="Enter remarks...">
+                    </div>
+                    <div class="quick-remarks-container" style="margin-top: 8px; display: ${quickRemarkButtons ? 'flex' : 'none'}; gap: 6px;">${quickRemarkButtons}</div>`;
+                
+                if (paramConfig.subParameters) {
+                    html += `<div class="sub-params-container" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #ccc;">
+                        <h4 style="font-weight: bold; margin-bottom: 8px; font-size: 12px;">Check failed components:</h4>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">` +
+                        paramConfig.subParameters.map(sub => `
+                            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px;">
+                                <input type="checkbox" value="${sub}" class="sub-param-checkbox"><span>${sub}</span>
+                            </label>`).join('') + 
+                        `</div></div>`;
+                }
+                html += `</div>`;
+            });
+
+            html += `</div></div>
+                    <div style="text-align: right;">
+                        <button type="submit" class="btn btn-primary">Issue Certificate</button>
+                    </div>
+                </form>`;
+            viewContainer.innerHTML = html;
+        }
+        
+        function renderSupervisorDashboard() {
+            let html = `
+                <div class="group-box">
+                    <h2 class="group-box-title">Fleet Readiness Overview</h2>
+                    <div id="fleet-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px;">`;
+            
+            Object.keys(fleetData).forEach(trainId => {
+                const statuses = {};
+                Object.keys(parameterConfig).forEach(dept => {
+                    const latestCert = fleetData[trainId][dept].slice(-1)[0];
+                    let statusColor = '#ccc';
+                    if (latestCert) {
+                        const expiry = new Date(latestCert.expiry);
+                        const today = new Date();
+                        const diffTime = expiry - today;
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        if (diffDays < 0 || latestCert.status === 'RED') statusColor = '#F44336';
+                        else if (diffDays <= 1) statusColor = '#FFC107';
+                        else statusColor = '#4CAF50';
+                    }
+                    statuses[dept] = statusColor;
+                });
+                
+                html += `<div style="border: 1px solid #ccc; padding: 10px; border-radius: 3px; background-color: #fff;">
+                    <h4 style="font-weight: bold;">${trainId.replace(' ', ' #')}</h4>
+                    <div style="margin-top: 8px; display: flex; gap: 8px;">
+                        <span title="Fitness" class="status-dot" style="background-color: ${statuses.fitness};"></span>
+                        <span title="Telecom" class="status-dot" style="background-color: ${statuses.tele};"></span>
+                        <span title="Signalling" class="status-dot" style="background-color: ${statuses.signalling};"></span>
+                    </div></div>`;
+            });
+            html += `</div></div>`;
+            viewContainer.innerHTML = html;
+        }
+        
+        function generateCertificateView(certRecord, department) {
+            const config = parameterConfig[department];
+            const statusInfo = certRecord.status === 'GREEN' ? { text: 'VALID', color: '#4CAF50' } : { text: 'INVALID', color: '#F44336' };
+            const html = `
+                <div id="certificate-page-container">
+                    <div style="margin-bottom: 20px; text-align: center;">
+                        <button id="back-to-dashboard-btn" class="btn">Back to Dashboard</button>
+                        <button id="print-btn" class="btn">Print / Save as PDF</button>
+                        <button id="download-json-btn" class="btn">Download JSON</button>
+                    </div>
+                    <div id="certificate-content" class="group-box" style="background-color: #fff;">
+                        <div style="text-align: center; margin-bottom: 2rem;">
+                            <h1 style="font-size: 24px; font-weight: bold;">KOCHI METRO RAIL LIMITED</h1>
+                            <h2 style="font-size: 20px; color: #555;">${config.title.toUpperCase()} CERTIFICATE</h2>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem; font-size: 13px;">
+                            <div><strong>Certificate ID:</strong> ${certRecord.id}</div>
+                            <div><strong>Trainset ID:</strong> ${currentFormData.train.replace(' ', ' #')}</div>
+                            <div><strong>Issue Date:</strong> ${certRecord.issueDate}</div>
+                            <div><strong>Expiry Date:</strong> ${certRecord.expiry}</div>
+                        </div>
+                        <div style="text-align:center; margin-bottom: 2rem;">
+                            <strong>Status:</strong> 
+                            <span style="font-size: 18px; font-weight: bold; color: ${statusInfo.color}; border: 1px solid ${statusInfo.color}; padding: 4px 12px; border-radius: 15px;">${statusInfo.text}</span>
+                        </div>
+                        <table>
+                            <thead><tr><th>System Inspected</th><th>Result</th><th>Notes</th></tr></thead>
+                            <tbody>
+                                ${certRecord.params.map(p => `
+                                    <tr>
+                                        <td>${p.name}</td>
+                                        <td style="font-weight: bold; color: ${p.status === 'Fail' ? '#c00' : '#080'};">${p.status.toUpperCase()}</td>
+                                        <td>${p.remarks || 'N/A'}</td>
+                                    </tr>`).join('')}
+                            </tbody>
+                        </table>
+                        <div style="text-align: right; margin-top: 3rem;">
+                             <p><strong>Inspected By:</strong> ${department.charAt(0).toUpperCase() + department.slice(1)} Department</p>
+                        </div>
+                    </div>
+                </div>`;
+            viewContainer.innerHTML = html;
+            lastGeneratedCert = { certificateDetails: certRecord, formData: currentFormData };
+        }
+
+        // --- CORE LOGIC ---
+        function showModal(title, message, buttons) {
+            modalTitle.textContent = title;
+            modalMessage.innerHTML = message;
+            modalButtons.innerHTML = '';
+            buttons.forEach(btnInfo => {
+                const button = document.createElement('button');
+                button.className = `btn ${btnInfo.class || ''}`;
+                button.textContent = btnInfo.text;
+                button.onclick = () => {
+                    hideModal();
+                    if(btnInfo.handler) btnInfo.handler();
+                };
+                modalButtons.appendChild(button);
+            });
+            modalBackdrop.style.display = 'block';
+            appModal.style.display = 'block';
+        }
+
+        function hideModal() {
+            modalBackdrop.style.display = 'none';
+            appModal.style.display = 'none';
+        }
+        
+        function showToast(message, isError = false) {
+            toast.textContent = message;
+            toast.style.backgroundColor = isError ? '#F44336' : '#4CAF50';
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 3000);
+        }
+
+        async function processCertificate() {
+            const { train, expiry, params, department, form } = currentFormData;
+            const issueDate = new Date().toISOString().split('T')[0];
+            let finalStatus = 'GREEN';
+            params.forEach(p => { if (p.status === 'Fail') finalStatus = 'RED'; });
+
+            const certRecord = { id: `C-${Date.now()}`, issueDate, expiry, status: finalStatus, params };
+            fleetData[train][department].push(certRecord);
+            
+            if (finalStatus === 'RED') {
+                const payload = {
+                    certificateId: certRecord.id, trainId: train, department,
+                    issueDate: certRecord.issueDate, expiryDate: certRecord.expiry,
+                    status: certRecord.status, parameters: certRecord.params
+                };
+                localStorage.setItem('kmrl_new_certificate_data', JSON.stringify(payload));
+                showToast('RED certificate data sent to Job Card system!');
+            }
+            
+            generateCertificateView(certRecord, department);
+            form.reset();
+        }
+
+        // --- EVENT LISTENERS ---
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            if (credentials[email] && credentials[email] === password) {
+                activeUserRole = email.split('@')[0];
+                userRoleDisplay.textContent = `User: ${activeUserRole.charAt(0).toUpperCase() + activeUserRole.slice(1)}`;
+                showPage('app');
+                if (activeUserRole === 'supervisor') {
+                    renderSupervisorDashboard();
+                } else {
+                    createDashboardUI(activeUserRole);
+                }
+            } else {
+                loginError.style.display = 'block';
+            }
+        });
+        
+        logoutBtn.addEventListener('click', () => {
+            activeUserRole = null;
+            loginForm.reset();
+            loginError.style.display = 'none';
+            showPage('login');
+        });
+
+        viewContainer.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (!e.target.classList.contains('certificate-form')) return;
+
+            const form = e.target;
+            const department = form.id.split('-')[0];
+            const train = form.querySelector('.train-select').value;
+            if (!form.checkValidity() || !train) {
+                alert('Please fill out all required fields, including the train.');
+                return;
+            }
+            
+            const params = [];
+            form.querySelectorAll('.parameter-row').forEach(row => {
+                const statusEl = row.querySelector('.param-status');
+                const paramData = { 
+                    name: statusEl.dataset.paramName, status: statusEl.value, 
+                    remarks: row.querySelector('.param-remarks').value, failed_components: []
+                };
+                if (paramData.status === 'Fail') {
+                    row.querySelectorAll('.sub-param-checkbox:checked').forEach(cb => paramData.failed_components.push(cb.value));
+                }
+                params.push(paramData);
+            });
+            currentFormData = { train, expiry: form.querySelector('.expiry-date').value, params, department, form };
+            confirmationStep = 1;
+            showModal('Confirm Issuance', `You are about to issue a ${department} certificate for ${train}. Please confirm.`, [{text: 'Cancel'}, {text: 'Continue', class: 'btn-primary', handler: handleModalConfirm}]);
+        });
+
+        function handleModalConfirm() {
+            if (confirmationStep === 1) {
+                confirmationStep = 2;
+                showModal('Final Confirmation', 'This action cannot be undone. Are you sure?', [{text: 'Cancel'}, {text: 'Issue Now', class: 'btn-primary', handler: processCertificate}]);
+            }
+        }
+        
+        viewContainer.addEventListener('click', (e) => {
+            const target = e.target;
+            if (target.id === 'back-to-dashboard-btn') {
+                if (activeUserRole === 'supervisor') renderSupervisorDashboard();
+                else createDashboardUI(activeUserRole);
+            }
+            if (target.id === 'print-btn') window.print();
+            if (target.id === 'download-json-btn') {
+                if (!lastGeneratedCert) return;
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(lastGeneratedCert, null, 2));
+                const a = document.createElement('a');
+                a.href = dataStr;
+                a.download = `certificate-${lastGeneratedCert.certificateDetails.id}.json`;
+                a.click();
+            }
+            if (target.classList.contains('quick-remark-btn')) {
+                const remarksInput = target.closest('.parameter-row').querySelector('.param-remarks');
+                remarksInput.value += (remarksInput.value ? ' ' : '') + target.textContent;
+            }
+            if (target.classList.contains('history-btn')) {
+                const form = target.closest('form');
+                showHistory(form.querySelector('.train-select').value, form.id.split('-')[0]);
+            }
+        });
+
+        function showHistory(trainId, dept) {
+            if (!trainId) return;
+            const history = fleetData[trainId][dept];
+            let content = 'No history found.';
+            if (history.length > 0) {
+                content = history.slice().reverse().map(cert => `
+                    <div class="group-box" style="margin-bottom: 10px; background: #fff;">
+                        <p><strong>Issued: ${cert.issueDate}, Expires: ${cert.expiry}, Status: <span style="font-weight: bold; color: ${cert.status === 'RED' ? '#c00' : '#080'}">${cert.status}</span></strong></p>
+                        <ul style="margin-top: 8px; font-size: 12px; padding-left: 20px;">
+                            ${cert.params.map(p => `<li><strong>${p.name}:</strong> ${p.status} - <em>${p.remarks || 'N/A'}</em></li>`).join('')}
+                        </ul>
+                    </div>`).join('');
+            }
+            showModal(`History for ${trainId} (${dept})`, `<div style="max-height: 400px; overflow-y: auto; padding-right: 10px;">${content}</div>`, [{text: 'Close', class: 'btn-primary'}]);
+        }
+        
+        viewContainer.addEventListener('change', (e) => {
+            const target = e.target;
+            if(target.classList.contains('train-select')) {
+                target.closest('form').querySelector('.history-btn').style.display = target.value ? 'inline-flex' : 'none';
+            }
+            if(target.classList.contains('param-status')) {
+                const row = target.closest('.parameter-row');
+                const remarksInput = row.querySelector('.param-remarks');
+                const subContainer = row.querySelector('.sub-params-container');
+                if (target.value === 'Fail') {
+                    remarksInput.required = true;
+                    if(subContainer) subContainer.style.display = 'block';
+                } else {
+                    remarksInput.required = false;
+                    if(subContainer) subContainer.style.display = 'none';
+                }
+            }
+        });
+
+        showPage('login');
+    });
+    </script>
+</body>
+</html>
+
