@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supervisor Command Dashboard v2.5 (Enhanced)</title>
+    <!-- Chart.js for the new analytics dashboard -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <style>
+        /* --- AESTHETIC OVERHAUL & MODERNIZATION --- */
+        :root {
+            --bg-dark: #111827; 
+            --content-bg: #1f2937; 
+            --border-color: #374151;
+            --title-bg: #374151; 
+            --title-text: #f3f4f6;
+            --text-color: #d1d5db; 
+            --text-muted: #9ca3af;
+            --btn-bg: #374151;
+            --btn-hover-bg: #4b5563;
+            --btn-primary-bg: #2563eb;
+            --btn-primary-hover-bg: #1d4ed8;
+            --accent-color: #3b82f6;
+            --accent-color-light: #60a5fa;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --success-color: #22c55e;
+            --font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+        }
+
+        body { 
+            font-family: var(--font-family); 
+            font-size: 14px; 
+            margin: 0; 
+            padding: 16px; 
+            background-color: var(--bg-dark); 
+            color: var(--text-color); 
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .main-container { max-width: 95%; margin: auto; }
+        .window { 
+            background-color: var(--content-bg); 
+            border: 1px solid var(--border-color); 
+            border-radius: 8px; /* Softer corners */
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            overflow: hidden; /* Ensures child elements respect border-radius */
+        }
+        .title-bar { 
+            padding: 10px 16px; 
+            background: var(--title-bg); 
+            border-bottom: 1px solid var(--border-color); 
+        }
+        .title-bar-text { font-weight: 600; color: var(--title-text); font-size: 16px; }
+        .window-content { padding: 24px; }
+        .group-box { 
+            border: 1px solid var(--border-color); 
+            background-color: rgba(17, 24, 39, 0.5); /* Darker, transparent feel */
+            border-radius: 6px; 
+            padding: 20px; 
+            margin-bottom: 24px; 
+        }
+        .group-box-title { 
+            font-weight: 600; 
+            margin: -20px -20px 16px -20px; 
+            padding: 12px 20px; 
+            border-bottom: 1px solid var(--border-color); 
+            background-color: rgba(55, 65, 81, 0.7); 
+            border-radius: 6px 6px 0 0;
+        }
+        
+        /* --- INTERACTIVE ELEMENTS --- */
+        .btn { 
+            background: var(--btn-bg); 
+            border: 1px solid var(--border-color); 
+            color: #fff; 
+            border-radius: 5px; 
+            padding: 8px 16px; 
+            cursor: pointer; 
+            font-weight: 500;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        .btn:hover { border-color: var(--accent-color); background-color: var(--btn-hover-bg); }
+        .btn:disabled { background: #4b5563; color: #9ca3af; cursor: not-allowed; border-color: #4b5563; }
+
+        .btn-primary { background: var(--btn-primary-bg); border-color: var(--btn-primary-bg); }
+        .btn-primary:hover { background: var(--btn-primary-hover-bg); border-color: var(--btn-primary-hover-bg); }
+
+        select, input[type="text"] { 
+            background: #2b3649; 
+            border: 1px solid var(--border-color); 
+            color: #fff; 
+            padding: 8px 12px; 
+            border-radius: 5px; 
+            width: 100%; 
+            box-sizing: border-box;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        select:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+
+        .nav-bar { display: flex; gap: 8px; background-color: transparent; padding: 0; border-bottom: 1px solid var(--border-color); margin-bottom: 24px; }
+        .nav-btn { 
+            flex-grow: 1; 
+            text-align: center; 
+            background-color: transparent; 
+            color: var(--text-muted); 
+            border: none;
+            border-bottom: 2px solid transparent;
+            padding: 12px 8px; 
+            cursor: pointer; 
+            border-radius: 0; 
+            font-size: 15px;
+            font-weight: 500;
+            transition: color 0.2s ease, border-color 0.2s ease;
+        }
+        .nav-btn:hover { color: var(--text-color); }
+        .nav-btn.active { color: var(--accent-color); border-color: var(--accent-color); font-weight: 600; }
+
+        .view { display: none; animation: fadeIn 0.5s ease; }
+        .view.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* --- LAYOUT & TABLES --- */
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+        .overview-grid { display: grid; grid-template-columns: 2fr 1.2fr; gap: 24px; }
+        .planner-grid { display: grid; grid-template-columns: 280px 1fr; gap: 24px; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        th { background-color: rgba(55, 65, 81, 0.5); font-weight: 600; }
+        tbody tr { transition: background-color 0.2s ease; }
+        tbody tr:hover { background-color: rgba(75, 85, 99, 0.3); }
+        tbody tr.selected { background-color: rgba(37, 99, 235, 0.4); }
+        tbody tr.selected:hover { background-color: rgba(37, 99, 235, 0.5); }
+        .alert-danger { color: var(--danger-color); font-weight: bold; }
+        .alert-warning { color: var(--warning-color); font-weight: bold; }
+        .table-container { height: 60vh; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; }
+
+        /* --- DETAILS PANEL & MODAL --- */
+        .details-panel-content { font-size: 14px; line-height: 1.7; }
+        .details-panel-content h4 { 
+            margin: 20px 0 10px 0; 
+            border-bottom: 1px solid var(--border-color); 
+            padding-bottom: 8px; 
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .details-panel-content h4:first-child { margin-top: 0; }
+        .details-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); }
+
+        .modal-backdrop { display: none; position: fixed; inset: 0; background-color: rgba(0,0,0,0.7); z-index: 99; animation: fadeIn 0.3s; }
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 100; animation: fadeIn 0.3s, scaleUp 0.3s; }
+        @keyframes scaleUp { from { transform: translate(-50%, -50%) scale(0.9); } to { transform: translate(-50%, -50%) scale(1); } }
+        .modal .window { min-width: 600px; max-width: 70vw; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+        .modal-content { max-height: 70vh; overflow-y: auto; padding-right: 10px; }
+        
+        /* --- DRAG & DROP --- */
+        .dropzone { 
+            border: 2px dashed var(--border-color); 
+            min-height: 100px; 
+            padding: 8px; 
+            border-radius: 6px; 
+            background: rgba(17, 24, 39, 0.5);
+            transition: border-color 0.2s ease, background-color 0.2s ease;
+        }
+        .dropzone.drag-over { border-color: var(--accent-color); background-color: rgba(37, 99, 235, 0.1); }
+        .draggable { 
+            cursor: grab; 
+            background: var(--accent-color); 
+            padding: 10px; 
+            border-radius: 5px; 
+            text-align: center; 
+            margin: 4px; 
+            user-select: none;
+            font-weight: 500;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        .draggable:active { cursor: grabbing; }
+        .dragging { opacity: 0.5; transform: scale(0.95); }
+        #train-compositions-wrapper { display: flex; overflow-x: auto; padding-bottom: 15px; }
+        .train-column { flex: 0 0 300px; margin-right: 16px; background-color: rgba(55, 65, 81, 0.3); border-radius: 6px; padding: 12px; }
+        .train-column h4 { margin: 0 0 12px 0; padding-bottom: 8px; border-bottom: 1px solid var(--border-color); }
+        
+        /* --- UTILITY & RESPONSIVENESS --- */
+        @media (max-width: 1024px) {
+            .overview-grid, .planner-grid { grid-template-columns: 1fr; }
+            .train-column { flex: 0 0 250px; }
+        }
+        
+        /* --- TOAST NOTIFICATIONS (NON-BLOCKING ALERTS) --- */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 101; }
+        .toast {
+            background-color: var(--content-bg); border: 1px solid var(--border-color); border-left-width: 4px;
+            padding: 16px; border-radius: 6px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            margin-top: 10px; min-width: 300px;
+            opacity: 0; transform: translateX(100%);
+            animation: slideIn 0.5s forwards;
+        }
+        .toast.success { border-left-color: var(--success-color); }
+        .toast.error { border-left-color: var(--danger-color); }
+        @keyframes slideIn { to { opacity: 1; transform: translateX(0); } }
+        @keyframes slideOut { to { opacity: 0; transform: translateX(100%); } }
+
+    </style>
+</head>
+<body>
+<div class="main-container">
+    <div class="window">
+        <div class="title-bar"><span class="title-bar-text">👑 Supervisor Command Dashboard</span></div>
+        <div class="window-content">
+            <div class="nav-bar">
+                <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+                <button class="nav-btn" data-view="overview">Fleet Overview</button>
+                <button class="nav-btn" data-view="planner">Stabling Planner</button>
+            </div>
+            
+            <!-- NEW: Analytics Dashboard View -->
+            <div id="dashboard-view" class="view active">
+                <div class="dashboard-grid">
+                    <div class="group-box">
+                        <div class="group-box-title">Key Metrics</div>
+                        <div id="key-metrics-content"></div>
+                    </div>
+                    <div class="group-box">
+                        <div class="group-box-title">Mileage Distribution</div>
+                        <canvas id="mileage-chart"></canvas>
+                    </div>
+                    <div class="group-box">
+                        <div class="group-box-title">Fleet Status</div>
+                        <canvas id="status-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div id="overview-view" class="view">
+                 <div class="overview-grid">
+                    <div class="group-box">
+                        <div class="group-box-title">Bogie Master List</div>
+                        <input type="text" id="bogie-search" placeholder="Search by Bogie ID..." style="margin-bottom: 16px;">
+                        <div class="table-container">
+                            <table id="bogie-master-table">
+                                <thead><tr><th>Bogie ID</th><th>Train</th><th>Mileage (km)</th><th>Last Cleaned</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="group-box">
+                        <div class="group-box-title">Bogie Drill-Down</div>
+                        <div id="details-panel" style="height: 60vh; overflow-y: auto;">
+                            <div class="details-placeholder">Select a bogie to see details.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="planner-view" class="view">
+                <div class="planner-grid">
+                    <div>
+                        <div class="group-box">
+                            <div class="group-box-title">Unassigned Bogies</div>
+                            <div id="unassigned-bogies" class="dropzone" style="height: 60vh; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+                    <div>
+                         <div class="group-box">
+                            <div class="group-box-title">Train Compositions (Scroll &rarr;)</div>
+                            <div id="train-compositions-wrapper"></div>
+                        </div>
+                        <div class="group-box">
+                            <div class="group-box-title">Assignment Assistant</div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end;">
+                                <div><label>Select Bogie</label><select id="assign-bogie-select"></select></div>
+                                <div><label>Select Train</label><select id="assign-train-select"></select></div>
+                                <button id="assign-btn" class="btn btn-primary">Assign</button>
+                            </div>
+                        </div>
+                        <button id="publish-plan-btn" class="btn btn-primary" style="width: 100%; padding: 12px;">Finalize and Publish Plan</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="modal-backdrop" class="modal-backdrop"></div>
+<div id="app-modal" class="modal">
+    <div class="window">
+        <div class="title-bar"><span id="modal-title" class="title-bar-text"></span></div>
+        <div class="window-content">
+            <div id="modal-content-body" class="modal-content"></div>
+            <div style="text-align: right; margin-top: 20px;">
+                <button id="close-modal-btn" class="btn">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="toast-container"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- CONFIG & CONSTANTS ---
+    const DB_KEY = 'kmrl_fleet_db_v2.5';
+    const PLAN_HISTORY_KEY = 'kmrl_plan_history_v2.5';
+    const MILEAGE_ALERT_THRESHOLD = 80000;
+    const CLEANING_ALERT_DAYS = 90;
+    const TRAIN_CAPACITY = 3;
+
+    // --- STATE MANAGEMENT ---
+    let masterData, planHistory;
+    let draggedItem = null;
+    let selectedBogieId = null;
+    let charts = {};
+
+    // --- DATA HANDLING ---
+    function generateMockData() {
+        const bogies = Array.from({ length: 50 }, (_, i) => ({
+            bogieId: `KMRL-B-${1001 + i}`,
+            mileage: Math.floor(Math.random() * 100000),
+            lastCleaned: new Date(Date.now() - Math.random() * 180 * 24 * 60 * 60 * 1000).toISOString(),
+            // Adding more realistic data points
+            manufacturer: ['Alstom', 'Bombardier', 'Siemens'][Math.floor(Math.random() * 3)],
+            installDate: new Date(Date.now() - (365 + Math.random() * 1000) * 24 * 60 * 60 * 1000).toISOString(),
+        }));
+        const trains = Array.from({ length: 10 }, (_, i) => ({
+            trainId: `TRN-0${i + 1}`,
+            composition: [],
+        }));
+        let bogieIndex = 0;
+        trains.forEach(train => {
+            for (let i = 0; i < TRAIN_CAPACITY; i++) {
+                if (bogieIndex < 35) { // Leave some unassigned
+                   train.composition.push(bogies[bogieIndex].bogieId);
+                   bogieIndex++;
+                }
+            }
+        });
+        return { bogies, trains };
+    }
+
+    function loadData() {
+        const storedData = localStorage.getItem(DB_KEY);
+        if (!storedData) {
+            masterData = generateMockData();
+            saveData();
+            showToast("Welcome! Mock data has been initialized.", "success");
+        } else {
+            masterData = JSON.parse(storedData);
+        }
+        planHistory = JSON.parse(localStorage.getItem(PLAN_HISTORY_KEY)) || [];
+    }
+
+    function saveData() {
+        localStorage.setItem(DB_KEY, JSON.stringify(masterData));
+    }
+
+    // --- VIEW & NAVIGATION ---
+    function switchView(viewName) {
+        document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.view === viewName));
+        document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === `${viewName}-view`));
+        if (viewName === 'dashboard') renderDashboard();
+    }
+
+    // --- UI RENDER FUNCTIONS ---
+    function renderAll() {
+        renderBogieList();
+        renderStablingTool();
+        if (document.querySelector('#dashboard-view.active')) renderDashboard();
+        if (selectedBogieId) renderDetailsPanel(selectedBogieId);
+    }
+
+    function renderBogieList(filter = '') {
+        const bogieTableBody = document.querySelector('#bogie-master-table tbody');
+        bogieTableBody.innerHTML = '';
+        masterData.bogies
+            .filter(bogie => bogie.bogieId.toLowerCase().includes(filter.toLowerCase()))
+            .forEach(bogie => {
+                const train = masterData.trains.find(t => t.composition.includes(bogie.bogieId));
+                const mileageAlert = bogie.mileage > MILEAGE_ALERT_THRESHOLD;
+                const cleaningAlert = (new Date() - new Date(bogie.lastCleaned)) / (1000 * 60 * 60 * 24) > CLEANING_ALERT_DAYS;
+
+                const row = document.createElement('tr');
+                row.dataset.bogieId = bogie.bogieId;
+                row.className = selectedBogieId === bogie.bogieId ? 'selected' : '';
+                row.innerHTML = `
+                    <td>${bogie.bogieId}</td>
+                    <td>${train ? train.trainId : 'Unassigned'}</td>
+                    <td class="${mileageAlert ? 'alert-danger' : ''}">${bogie.mileage.toLocaleString()}</td>
+                    <td class="${cleaningAlert ? 'alert-warning' : ''}">${new Date(bogie.lastCleaned).toLocaleDateString()}</td>`;
+                bogieTableBody.appendChild(row);
+        });
+    }
+
+    function renderDetailsPanel(bogieId) {
+        const detailsPanel = document.getElementById('details-panel');
+        const bogie = masterData.bogies.find(b => b.bogieId === bogieId);
+        if (!bogie) return;
+
+        const train = masterData.trains.find(t => t.composition.includes(bogieId));
+        detailsPanel.innerHTML = `
+            <div class="details-panel-content">
+                <h4>Core Details for ${bogie.bogieId}</h4>
+                <p><strong>Manufacturer:</strong> ${bogie.manufacturer}</p>
+                <p><strong>Installed On:</strong> ${new Date(bogie.installDate).toLocaleDateString()}</p>
+                <p><strong>Current Train:</strong> ${train ? train.trainId : 'Unassigned'}</p>
+                <h4>Maintenance Status</h4>
+                <p><strong>Mileage:</strong> ${bogie.mileage.toLocaleString()} km</p>
+                <p><strong>Last Cleaned:</strong> ${new Date(bogie.lastCleaned).toLocaleString()}</p>
+            </div>`;
+    }
+
+    function renderStablingTool() {
+        const assignedBogieIds = new Set(masterData.trains.flatMap(t => t.composition));
+        const unassignedContainer = document.getElementById('unassigned-bogies');
+        unassignedContainer.innerHTML = '';
+        masterData.bogies.forEach(bogie => {
+            if (!assignedBogieIds.has(bogie.bogieId)) {
+                unassignedContainer.appendChild(createBogieEl(bogie.bogieId));
+            }
+        });
+        
+        const trainsWrapper = document.getElementById('train-compositions-wrapper');
+        trainsWrapper.innerHTML = '';
+        masterData.trains.forEach(train => {
+            const trainColumn = document.createElement('div');
+            trainColumn.className = 'train-column';
+            trainColumn.innerHTML = `<h4>${train.trainId} (${train.composition.length}/${TRAIN_CAPACITY})</h4>`;
+            const dropzone = document.createElement('div');
+            dropzone.dataset.trainId = train.trainId;
+            dropzone.className = 'dropzone';
+            dropzone.style.minHeight = '150px';
+            train.composition.forEach(bogieId => dropzone.appendChild(createBogieEl(bogieId)));
+            trainColumn.appendChild(dropzone);
+            trainsWrapper.appendChild(trainColumn);
+        });
+        updateAssignmentAssistant();
+    }
+    
+    function renderDashboard() {
+        // Metrics
+        const metricsContainer = document.getElementById('key-metrics-content');
+        const assignedBogies = new Set(masterData.trains.flatMap(t => t.composition)).size;
+        const alerts = masterData.bogies.filter(b => b.mileage > MILEAGE_ALERT_THRESHOLD || (new Date() - new Date(b.lastCleaned)) / (1000 * 60 * 60 * 24) > CLEANING_ALERT_DAYS).length;
+        metricsContainer.innerHTML = `
+            <p><strong>Total Bogies:</strong> ${masterData.bogies.length}</p>
+            <p><strong>Total Trains:</strong> ${masterData.trains.length}</p>
+            <p><strong>Assigned Bogies:</strong> ${assignedBogies}</p>
+            <p><strong>Maintenance Alerts:</strong> <span class="${alerts > 0 ? 'alert-danger' : ''}">${alerts}</span></p>
+        `;
+
+        // Mileage Chart
+        const mileageCtx = document.getElementById('mileage-chart').getContext('2d');
+        if(charts.mileage) charts.mileage.destroy();
+        charts.mileage = new Chart(mileageCtx, {
+            type: 'bar',
+            data: {
+                labels: masterData.bogies.map(b => b.bogieId),
+                datasets: [{
+                    label: 'Mileage (km)',
+                    data: masterData.bogies.map(b => b.mileage),
+                    backgroundColor: masterData.bogies.map(b => b.mileage > MILEAGE_ALERT_THRESHOLD ? 'rgba(239, 68, 68, 0.6)' : 'rgba(59, 130, 246, 0.6)'),
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { display: false } } }
+        });
+
+        // Status Chart
+        const statusCtx = document.getElementById('status-chart').getContext('2d');
+        if(charts.status) charts.status.destroy();
+        charts.status = new Chart(statusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Assigned', 'Unassigned'],
+                datasets: [{ data: [assignedBogies, masterData.bogies.length - assignedBogies], backgroundColor: ['#2563eb', '#4b5563'] }]
+            },
+            options: { responsive: true }
+        });
+    }
+
+    function createBogieEl(bogieId) {
+        const el = document.createElement('div');
+        el.id = `draggable-${bogieId}`;
+        el.textContent = bogieId;
+        el.className = 'draggable';
+        el.draggable = true;
+        el.dataset.bogieId = bogieId;
+        return el;
+    }
+
+    function updateAssignmentAssistant() {
+        const assignBogieSelect = document.getElementById('assign-bogie-select');
+        const assignTrainSelect = document.getElementById('assign-train-select');
+        assignBogieSelect.innerHTML = masterData.bogies.map(b => `<option value="${b.bogieId}">${b.bogieId}</option>`).join('');
+        assignTrainSelect.innerHTML = masterData.trains.map(t => `<option value="${t.trainId}">${t.trainId}</option>`).join('');
+    }
+
+    // --- CORE LOGIC ---
+    function moveBogie(bogieId, targetTrainId) {
+        // Remove from old location
+        masterData.trains.forEach(t => t.composition = t.composition.filter(b => b !== bogieId));
+        // Add to new location
+        if (targetTrainId) {
+            const targetTrain = masterData.trains.find(t => t.trainId === targetTrainId);
+            if (targetTrain.composition.length < TRAIN_CAPACITY) {
+                targetTrain.composition.push(bogieId);
+            } else {
+                showToast(`Train ${targetTrainId} is full. Bogie returned to unassigned.`, "error");
+                return false;
+            }
+        }
+        saveData();
+        renderAll();
+        return true;
+    }
+
+    function publishPlan() {
+        const plan = {
+            id: `plan-${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            compositions: JSON.parse(JSON.stringify(masterData.trains)) // Deep copy
+        };
+        planHistory.unshift(plan); // Add to beginning
+        if (planHistory.length > 10) planHistory.pop(); // Keep only last 10
+        localStorage.setItem(PLAN_HISTORY_KEY, JSON.stringify(planHistory));
+        showToast(`Plan ${plan.id} published successfully!`, "success");
+    }
+
+    // --- EVENT HANDLERS ---
+    function setupEventListeners() {
+        document.querySelector('.nav-bar').addEventListener('click', (e) => {
+            if (e.target.classList.contains('nav-btn')) switchView(e.target.dataset.view);
+        });
+        document.querySelector('#bogie-master-table tbody').addEventListener('click', (e) => {
+            const row = e.target.closest('tr');
+            if (row && row.dataset.bogieId) {
+                selectedBogieId = row.dataset.bogieId;
+                renderBogieList(); // Re-render for selection style
+                renderDetailsPanel(selectedBogieId);
+            }
+        });
+        document.getElementById('bogie-search').addEventListener('input', (e) => renderBogieList(e.target.value));
+        document.getElementById('assign-btn').addEventListener('click', () => {
+            const bogieId = document.getElementById('assign-bogie-select').value;
+            const trainId = document.getElementById('assign-train-select').value;
+            moveBogie(bogieId, trainId);
+        });
+        document.getElementById('publish-plan-btn').addEventListener('click', publishPlan);
+        document.getElementById('close-modal-btn').addEventListener('click', closeModal);
+        document.getElementById('modal-backdrop').addEventListener('click', closeModal);
+        
+        // Use event delegation for dynamically created elements
+        document.body.addEventListener('dragstart', e => {
+            if (e.target.classList.contains('draggable')) {
+                draggedItem = e.target;
+                setTimeout(() => e.target.classList.add('dragging'), 0);
+            }
+        });
+        document.body.addEventListener('dragend', e => {
+            if (e.target.classList.contains('draggable')) {
+                draggedItem.classList.remove('dragging');
+                draggedItem = null;
+            }
+        });
+        document.body.addEventListener('dragover', e => {
+            if (e.target.closest('.dropzone')) e.preventDefault();
+        });
+        document.body.addEventListener('drop', e => {
+            e.preventDefault();
+            const dropzone = e.target.closest('.dropzone');
+            if (!draggedItem || !dropzone) return;
+            moveBogie(draggedItem.dataset.bogieId, dropzone.dataset.trainId);
+        });
+    }
+
+    // --- MODAL & NOTIFICATIONS ---
+    function showToast(message, type = "info") {
+        const toastContainer = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        toastContainer.appendChild(toast);
+        setTimeout(() => {
+            toast.style.animation = 'slideOut 0.5s forwards';
+            toast.addEventListener('animationend', () => toast.remove());
+        }, 4000);
+    }
+    function closeModal() {
+        const modal = document.getElementById('app-modal');
+        const backdrop = document.getElementById('modal-backdrop');
+        modal.style.display = 'none';
+        backdrop.style.display = 'none';
+    }
+
+    // --- INITIALIZATION ---
+    function init() {
+        loadData();
+        setupEventListeners();
+        switchView('dashboard');
+        renderAll();
+    }
+    
+    init();
+});
+</script>
+</body>
+</html>
+
